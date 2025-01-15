@@ -1,4 +1,5 @@
 def main() -> None:
+    # TODO: Write some code that loads and inspects the data
     pass
 
 
