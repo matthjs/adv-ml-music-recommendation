@@ -8,14 +8,12 @@ class AbstractSongRecommender(ABC):
     recommends new songs to a playlist.
     """
 
-    def __init__(self, playlist: pd.DataFrame):
+    def __init__(self, tracks: pd.DataFrame):
         """
-        TODO: check this
+        Tracks == Entire dataset
         """
-        self.playlist = playlist
-        self.tracks = None  # extract tracks from playlist dataframe?
+        self.tracks = tracks
 
     @abstractmethod
-    def recommend_tracks(self, playlist_id: str, ignore_ids=None) -> pd.DataFrame:
+    def recommend_tracks(self, playlist_id: int, ignore_ids=None) -> pd.DataFrame:
         pass
-
