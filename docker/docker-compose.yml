@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: spotify-sql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: mysecretpassword  # Root password for MySQL
+      MYSQL_DATABASE: spotifydb             # The database to create on startup
+      MYSQL_USER: anon                 # Custom user
+      MYSQL_PASSWORD: spotify         # Custom user's password
+    ports:
+      - "3306:3306"  # Map the container's MySQL port to the host
+    volumes:
+      - mysql-data:/var/lib/mysql  # Persist MySQL data
+      - ./dumps:/docker-entrypoint-initdb.d  # Mount the current directory's 'dumps' folder into the container
+    restart: always  # Automatically restart the container if it stops
+
+volumes:
+  mysql-data:
+    driver: local  # Local volume to persist data
