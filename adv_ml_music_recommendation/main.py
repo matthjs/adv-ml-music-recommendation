@@ -33,6 +33,29 @@ def prepare_data() -> pd.DataFrame:
 
 
 def main() -> None:
+    import mysql.connector as mysql
+    import pandas as pd
+
+    # Connect to the database using your custom user and password
+    db = mysql.connect(
+        host="localhost",  # MySQL host (localhost since the container is running locally)
+        user="anon",  # Custom MySQL username
+        password="spotify",  # Custom MySQL user's password
+        database="spotifydb"  # The database to connect to
+    )
+
+    # Define the query
+    query = "SELECT * FROM track LIMIT 10"
+
+    # Fetch data into a Pandas DataFrame
+    df = pd.read_sql(query, db)
+
+    # Display the first few rows
+    print(df.head())
+
+    # Close the database connection
+    db.close()
+    """
     playlist_df = prepare_data()
     print(playlist_df.head())
     model_evaluator = RecommenderEvaluator(playlist_df)
@@ -43,6 +66,7 @@ def main() -> None:
     print(popularity_model_details[[x for x in popularity_model_details.columns if x != 'playlist_id']] \
           .sort_values('recall@5', ascending=False) \
           .head(10))
+    """
 
 
 if __name__ == "__main__":
