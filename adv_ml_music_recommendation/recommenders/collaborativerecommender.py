@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 from scipy.sparse.linalg import svds
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
-from adv_ml_music_recommendation.util.data_functions import create_sparse_interaction_matrix
+from adv_ml_music_recommendation.util.data_functions import create_sparse_interaction_matrix, \
+    filter_out_playlist_tracks, get_tracks_by_playlist
 
 
 class CollaborativeRecommender(AbstractSongRecommender):
@@ -50,14 +51,16 @@ class CollaborativeRecommender(AbstractSongRecommender):
         """
         predicted_ratings = self.get_predicted_ratings_for_playlist(playlist_id)
 
-        # Get the indices of the top K tracks with the highest predicted ratings
-        top_track_indices = np.argsort(predicted_ratings)[::-1][:top_k]
+        # Create a DataFrame of all tracks with their predicted ratings
+        recommendations = self.df_tracks.copy()
+        recommendations['predicted_rating'] = predicted_ratings
 
-        # Get the track IDs for the top K tracks
-        top_tracks = self.df_tracks.loc[top_track_indices]
+        # Filter out tracks already in the playlist
+        playlist_tracks = get_tracks_by_playlist(self.df_playlist, self.df_tracks, playlist_id)
+        filtered_recommendations = filter_out_playlist_tracks(recommendations, playlist_tracks)
 
-        # Get predicted ratings for the top K tracks
-        top_tracks['predicted_rating'] = predicted_ratings[top_track_indices]
+        # Sort by predicted rating and take the top K
+        top_tracks = filtered_recommendations.sort_values(by='predicted_rating', ascending=False).head(top_k)
 
         # top_tracks[['track_uri', 'track_name', 'artist_name', 'predicted_rating']]
         return top_tracks

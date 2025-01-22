@@ -144,3 +144,18 @@ def create_sparse_interaction_matrix(df_playlist: pd.DataFrame, df_tracks: pd.Da
                                           dtype=np.float64)
 
     return interaction_matrix_sparse
+
+
+def filter_out_playlist_tracks(recommendations: pd.DataFrame, playlist_tracks: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filters out tracks that are already in the given playlist from the recommendation list.
+
+    :param recommendations: DataFrame containing recommended tracks.
+    :param playlist_tracks: DataFrame containing tracks already in the playlist.
+    :return: DataFrame containing recommended tracks with tracks already in the playlist removed.
+    """
+    # Get the track URIs already in the playlist
+    playlist_track_uris = playlist_tracks['track_uri'].values
+
+    # Filter out tracks already in the playlist
+    return recommendations[~recommendations['track_uri'].isin(playlist_track_uris)]

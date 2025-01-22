@@ -3,4 +3,5 @@
 data
 /adv_ml_music_recommendation/spotify.yaml
 *.sql
-__pycache__
+__pycache__/
+*.pyc

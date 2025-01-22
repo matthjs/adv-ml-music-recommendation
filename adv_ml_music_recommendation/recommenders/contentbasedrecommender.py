@@ -5,7 +5,7 @@ import pandas as pd
 from gensim.models import Word2Vec
 from sklearn.metrics.pairwise import cosine_similarity
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
-from adv_ml_music_recommendation.util.data_functions import get_tracks_by_playlist
+from adv_ml_music_recommendation.util.data_functions import get_tracks_by_playlist, filter_out_playlist_tracks
 
 
 class ContentRecommender(AbstractSongRecommender):
@@ -31,16 +31,16 @@ class ContentRecommender(AbstractSongRecommender):
         self.attribute_list = attribute_list
 
         # On class instantiation immediately "fits" to data. Something we want to change? Idk.
+        # TODO: Need to double check this part
         df_corpus = self.df_tracks[attribute_list].apply(lambda x: ' '.join(x.astype(str)), axis=1)
-        # print(df_corpus[0:10])
         corpus = [row.split() for row in df_corpus]
-        # print(corpus[0:10])
         self.embedder = Word2Vec(sentences=corpus, vector_size=vector_size, window=window, epochs=epochs, sg=sg)
+
         # Pre-compute track embeddings of all tracks
-        self.track_embeddings = []
-        for _, track in self.df_tracks.iterrows():  # Is there a more efficient way than to use a for loop?
-            track_embedding = self.construct_track_embedding(track)
-            self.track_embeddings.append(track_embedding)
+        self.track_embeddings = {
+            track['track_uri']: self.construct_track_embedding(track)
+            for _, track in self.df_tracks.iterrows()
+        }
 
     def get_average_w2v(self, tokens: List[str], vector_size: int = 100) -> np.ndarray:
         """
@@ -89,7 +89,18 @@ class ContentRecommender(AbstractSongRecommender):
         """
         playlist_embedding = self.construct_playlist_embedding(playlist_id)
 
-        track_embeddings = np.vstack(self.track_embeddings)
+        # Filter out tracks already in the playlist
+        candidate_tracks = filter_out_playlist_tracks(
+            self.df_tracks,
+            get_tracks_by_playlist(self.df_playlist, self.df_tracks, playlist_id)
+        )
+
+        # Retrieve precomputed embeddings for candidate tracks
+        track_embeddings = np.vstack([
+            self.track_embeddings[track['track_uri']]
+            for _, track in candidate_tracks.iterrows() if track['track_uri'] in self.track_embeddings
+        ])
+
         similarities = cosine_similarity(playlist_embedding.reshape(1, -1), track_embeddings).flatten()
 
         # Normalize cosine similarity to the range [-1,1] --> [0, 1]
