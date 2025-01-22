@@ -36,6 +36,11 @@ class ContentRecommender(AbstractSongRecommender):
         corpus = [row.split() for row in df_corpus]
         # print(corpus[0:10])
         self.embedder = Word2Vec(sentences=corpus, vector_size=vector_size, window=window, epochs=epochs, sg=sg)
+        # Pre-compute track embeddings of all tracks
+        self.track_embeddings = []
+        for _, track in self.df_tracks.iterrows():  # Is there a more efficient way than to use a for loop?
+            track_embedding = self.construct_track_embedding(track)
+            self.track_embeddings.append(track_embedding)
 
     def get_average_w2v(self, tokens: List[str], vector_size: int = 100) -> np.ndarray:
         """
@@ -84,13 +89,7 @@ class ContentRecommender(AbstractSongRecommender):
         """
         playlist_embedding = self.construct_playlist_embedding(playlist_id)
 
-        # Compute similarity with all tracks
-        track_embeddings = []
-        for _, track in self.df_tracks.iterrows():  # Is there a more efficient way than to use a for loop?
-            track_embedding = self.construct_track_embedding(track)
-            track_embeddings.append(track_embedding)
-
-        track_embeddings = np.vstack(track_embeddings)
+        track_embeddings = np.vstack(self.track_embeddings)
         similarities = cosine_similarity(playlist_embedding.reshape(1, -1), track_embeddings).flatten()
 
         # Normalize cosine similarity to the range [-1,1] --> [0, 1]
