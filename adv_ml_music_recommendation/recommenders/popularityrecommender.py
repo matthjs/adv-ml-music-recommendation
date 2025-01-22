@@ -7,7 +7,8 @@ from adv_ml_music_recommendation.recommenders.abstractrecommender import Abstrac
 class PopularityRecommender(AbstractSongRecommender):
     """
     The simplest recommender. Simple recommends the most popular songs.
-    Based on the track_popularity metric.
+    Based on the track_popularity metric.w
+    NOTE: Class will not work as the current dataset has no popularity feature.
     """
 
     def recommend_tracks(self, playlist_id: int, ignore_ids=None) -> pd.DataFrame:
