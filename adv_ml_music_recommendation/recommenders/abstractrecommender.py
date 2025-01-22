@@ -13,7 +13,7 @@ class AbstractSongRecommender(ABC):
         :param df_playlist: DataFrame containing 'track_uri' and 'playlist_id'.
         :param df_tracks: DataFrame containing detailed track information.
         """
-        self.df_playlists = df_playlist
+        self.df_playlist = df_playlist
         self.df_tracks = df_tracks
 
     @abstractmethod

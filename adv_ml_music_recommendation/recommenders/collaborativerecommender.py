@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
-from abc import ABC, abstractmethod
-
 from scipy.sparse.linalg import svds
-
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 from adv_ml_music_recommendation.util.data_functions import create_sparse_interaction_matrix
 
@@ -51,7 +48,6 @@ class CollaborativeRecommender(AbstractSongRecommender):
         """
         Recommends top N tracks for the given playlist based on predicted ratings.
         """
-        # Get predicted ratings for the playlist
         predicted_ratings = self.get_predicted_ratings_for_playlist(playlist_id)
 
         # Get the indices of the top K tracks with the highest predicted ratings
