@@ -1,31 +1,85 @@
 from typing import Tuple
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score
+
+from adv_ml_music_recommendation.recommenders.hybridrecommender import HybridRecommender
 from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 
-
-
 class RecommenderEvaluator:
-    def __init__(self, model: AbstractSongRecommender, model_name: str):
-        self.model = model
-        self.model_name = model_name
+    def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame):
+        self.train_data = []
+        self.test_data = []
+
+        # Group by playlist_id and perform train-test split for each playlist
+        for playlist_id, group in df_playlist.groupby('playlist_id'):
+            # Extract track_uris for the current playlist
+            track_uris = group['track_uri'].tolist()
+
+            # Perform train-test split
+            train_uris, test_uris = train_test_split(track_uris, test_size=0.2, random_state=42)
+
+            # Append the results to the train and test lists
+            self.train_data.append({'playlist_id': playlist_id, 'track_uri': train_uris})
+            self.test_data.append({'playlist_id': playlist_id, 'track_uri': test_uris})
+
+        self.df_train = pd.DataFrame(self.train_data)
+        self.df_test = pd.DataFrame(self.test_data)
+        self.train_data_model = HybridRecommender(df_playlist=self.df_train, df_tracks=df_tracks)
+        self.test_data_model = HybridRecommender(df_playlist=self.df_test, df_tracks=df_tracks)
 
 
-    def evaluate_recommender_for_playlist(self, playlist_id, n: int = 100, seed: int = 42):
+    def evaluate_recommender_for_playlist(self, playlist_id):
+        # Get recommendations from the train model
+        ranked_recommendations_df = self.train_data_model.recommend_tracks(playlist_id)
+
+        # Extract the recommended track URIs
+        recommended_track_uris = ranked_recommendations_df['track_uri'].tolist()
+
+        # Get the ground truth: test track URIs for the playlist
+        test_track_uris = self.df_test[self.df_test['playlist_id'] == playlist_id]['track_uri'].iloc[0]
+
+        # Create binary vectors for precision and recall calculation
+        y_true = [1 if uri in test_track_uris else 0 for uri in recommended_track_uris]
+        y_pred = [1] * len(recommended_track_uris)  # All recommendations are predicted as relevant
+
+        # Compute precision and recall
+        precision = precision_score(y_true, y_pred, zero_division=0)
+        recall = recall_score(y_true, y_pred, zero_division=0)
+
+        return precision, recall
+
+
+    def evaluate_model(self):
+        total_precision = 0
+        total_recall = 0
+        num_playlists = len(self.df_test)
+
+        # Iterate over all playlists in the test_data
+        for playlist_id in self.df_test['playlist_id'].unique():
+            precision, recall = self.evaluate_recommender_for_playlist(playlist_id)
+            total_precision += precision
+            total_recall += recall
+
+        # Compute average precision and recall
+        avg_precision = total_precision / num_playlists
+        avg_recall = total_recall / num_playlists
+
+        return {
+            'average_precision': avg_precision,
+            'average_recall': avg_recall
+        }
+
+
+    def evaluate_recommender_for_playlist_old(self, playlist_id, n: int = 100, seed: int = 42):
         # an interacted track is a track that is in the playlist
         tracks_interacted, tracks_not_interacted = get_interacted_tracks(
             self.model.df_playlist, self.model.df_tracks, playlist_id
         )
 
-        # Split interacted tracks in a `train` and `test` split;
-        train, test = train_test_split(tracks_interacted, test_size=0.2, random_state=seed)
-
-        # train not used!
-        #test = tracks_interacted
-
         # Get recommendations based on a playlist
-        ranked_recommendations_df = self.model.recommend_tracks(playlist_id) # should be train
+        ranked_recommendations_df = self.model.recommend_tracks(playlist_id)
 
         playlist_metrics = []
         for top_N in range(2, 11):
@@ -61,7 +115,7 @@ class RecommenderEvaluator:
         return playlist_metrics
 
 
-    def evaluate_model(self, n=100, seed=42):
+    def evaluate_model_old(self, n=100, seed=42):
         playlists = []
         for playlist_id in self.model.df_playlist['playlist_id'].unique():
             playlist_metrics = self.evaluate_recommender_for_playlist(playlist_id, n=n, seed=seed)
