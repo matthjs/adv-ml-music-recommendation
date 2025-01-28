@@ -27,8 +27,12 @@ class RecommenderEvaluator:
                 train_uris, test_uris = train_test_split(track_uris, test_size=0.2, random_state=42)
 
                 # Append the results to the train and test lists
-                self.train_data.append({'playlist_id': playlist_id, 'track_uri': train_uris})
-                self.test_data.append({'playlist_id': playlist_id, 'track_uri': test_uris})
+                # Append the results to the train and test lists
+                for uri in train_uris:
+                    self.train_data.append({'playlist_id': playlist_id, 'track_uri': uri})
+
+                for uri in test_uris:
+                    self.test_data.append({'playlist_id': playlist_id, 'track_uri': uri})
 
         self.df_train = pd.DataFrame(self.train_data)
         self.df_test = pd.DataFrame(self.test_data)
