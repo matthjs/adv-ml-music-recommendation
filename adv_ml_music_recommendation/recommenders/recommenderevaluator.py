@@ -17,15 +17,18 @@ class RecommenderEvaluator:
 
         # Group by playlist_id and perform train-test split for each playlist
         for playlist_id, group in df_playlist.groupby('playlist_id'):
-            # Extract track_uris for the current playlist
-            track_uris = group['track_uri'].tolist()
+            # arbitrary value to exclude short playlists
+            if group.shape[0] > 8:
+                # Extract track_uris for the current playlist
+                track_uris = group['track_uri'].tolist()
 
-            # Perform train-test split
-            train_uris, test_uris = train_test_split(track_uris, test_size=0.2, random_state=42)
+                # Perform train-test split
+                print(track_uris)
+                train_uris, test_uris = train_test_split(track_uris, test_size=0.2, random_state=42)
 
-            # Append the results to the train and test lists
-            self.train_data.append({'playlist_id': playlist_id, 'track_uri': train_uris})
-            self.test_data.append({'playlist_id': playlist_id, 'track_uri': test_uris})
+                # Append the results to the train and test lists
+                self.train_data.append({'playlist_id': playlist_id, 'track_uri': train_uris})
+                self.test_data.append({'playlist_id': playlist_id, 'track_uri': test_uris})
 
         self.df_train = pd.DataFrame(self.train_data)
         self.df_test = pd.DataFrame(self.test_data)
@@ -88,66 +91,3 @@ class RecommenderEvaluator:
             'average_recall': avg_recall
         }
 
-
-    def evaluate_recommender_for_playlist_old(self, playlist_id, n: int = 100, seed: int = 42):
-        # an interacted track is a track that is in the playlist
-        tracks_interacted, tracks_not_interacted = get_interacted_tracks(
-            self.model.df_playlist, self.model.df_tracks, playlist_id
-        )
-
-        # Get recommendations based on a playlist
-        ranked_recommendations_df = self.model.recommend_tracks(playlist_id)
-
-        playlist_metrics = []
-        for top_N in range(2, 11):
-            hits = 0
-
-            # check for each track whether it appears in the model's top_N recommendations given
-            # evaluation playlist
-            for index, row in test.iterrows():
-                # Sample tracks not present in the playlist
-                non_interacted_sample = tracks_not_interacted.sample(n, random_state=seed)
-
-                # Create evaluation set by combining current track with tracks unknown to user
-                evaluation_ids = [row['track_uri']] + non_interacted_sample['track_uri'].tolist()
-
-                # Get the intersection of ranked recommendations and evaluation ids set
-                ## I do not understand how the track at 'row['track_uri']' can appear
-                ## in the ranked recommendations_df since it a part of the original playlist
-                evaluation_recommendations_df = ranked_recommendations_df[
-                    ranked_recommendations_df['track_uri'].isin(evaluation_ids)]
-
-                # Verifying if the track is among the Top-N count recommended items
-                hits += 1 if row['track_uri'] in evaluation_recommendations_df['track_uri'][:top_N].tolist() else 0
-
-            playlist_metrics.append({'top_N': top_N,
-                                'evaluation_count': len(test),
-                                'hits': hits,
-                                'precision': hits / top_N,
-                                'recall': hits / len(test)
-                                })
-
-
-
-        return playlist_metrics
-
-
-    def evaluate_model_old(self, n=100, seed=42):
-        playlists = []
-        for playlist_id in self.model.df_playlist['playlist_id'].unique():
-            playlist_metrics = self.evaluate_recommender_for_playlist(playlist_id, n=n, seed=seed)
-            playlist_metrics['playlist_id'] = playlist_id
-            playlists.append(playlist_metrics)
-
-        detailed_playlists_metrics = pd.DataFrame(playlists).sort_values('evaluation_count', ascending=False)
-
-        global_recall_at_5 = detailed_playlists_metrics['hits@5'].sum() / detailed_playlists_metrics[
-            'evaluation_count'].sum()
-        global_recall_at_10 = detailed_playlists_metrics['hits@10'].sum() / detailed_playlists_metrics[
-            'evaluation_count'].sum()
-
-        global_metrics = {'recall@5': global_recall_at_5,
-                          'recall@10': global_recall_at_10,
-                          }
-
-        return global_metrics, detailed_playlists_metrics
