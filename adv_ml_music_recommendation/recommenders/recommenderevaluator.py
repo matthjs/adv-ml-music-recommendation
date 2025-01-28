@@ -22,10 +22,10 @@ class RecommenderEvaluator:
         train, test = train_test_split(tracks_interacted, test_size=0.2, random_state=seed)
 
         # train not used!
-        test = tracks_interacted
+        #test = tracks_interacted
 
         # Get recommendations based on a playlist
-        ranked_recommendations_df = self.model.recommend_tracks(playlist_id)
+        ranked_recommendations_df = self.model.recommend_tracks(playlist_id) # should be train
 
         playlist_metrics = []
         for top_N in range(2, 11):
@@ -41,6 +41,8 @@ class RecommenderEvaluator:
                 evaluation_ids = [row['track_uri']] + non_interacted_sample['track_uri'].tolist()
 
                 # Get the intersection of ranked recommendations and evaluation ids set
+                ## I do not understand how the track at 'row['track_uri']' can appear
+                ## in the ranked recommendations_df since it a part of the original playlist
                 evaluation_recommendations_df = ranked_recommendations_df[
                     ranked_recommendations_df['track_uri'].isin(evaluation_ids)]
 
