@@ -1,5 +1,5 @@
 from typing import Optional, List
-
+import ast
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
@@ -27,16 +27,40 @@ class ContentRecommender(AbstractSongRecommender):
         if attribute_list is None:
             attribute_list = ['name', 'artists', 'danceability', 'energy', 'loudness',
                               'tempo', 'release_date', 'acousticness', 'speechiness']
-        # Artists becomes "['Artist_1', "Artist_2']"
         self.attribute_list = attribute_list
 
-        # On class instantiation immediately "fits" to data. Something we want to change? Idk.
-        # TODO: Need to double check this part
-        df_corpus = self.df_tracks[attribute_list].apply(lambda x: ' '.join(x.astype(str)), axis=1)
+        def discretize(value: float, threshold_low=0.4, threshold_high=0.7) -> str:
+            if value <= threshold_low:
+                return 'low'
+            elif value <= threshold_high:
+                return 'medium'
+            else:
+                return 'high'
+
+        # Create the corpus based on the attributes, discretizing numeric values
+        def create_track_sentence(track):
+            sentence = []
+            for attribute in self.attribute_list:
+                value = track[attribute]
+                if attribute == 'artists' and isinstance(value, str):  # Handle 'artists' as string representation of list
+                    # Convert string representation of list to actual list
+                    artists_list = ast.literal_eval(value)
+                    # Append each artist as a separate token
+                    sentence.extend(artists_list)
+                elif isinstance(value, (int, float)):  # For numeric attributes
+                    value = discretize(value)
+                    sentence.append(f"{value}_{attribute}")
+                    continue  # Skip the default string representation if it's numeric
+                else:
+                    sentence.append(str(value))  # For other string attributes
+            return ' '.join(sentence)
+
+        # Generate the corpus from the track data
+        df_corpus = self.df_tracks.apply(create_track_sentence, axis=1)
         corpus = [row.split() for row in df_corpus]
         self.embedder = Word2Vec(sentences=corpus, vector_size=vector_size, window=window, epochs=epochs, sg=sg)
 
-        # Pre-compute track embeddings of all tracks
+        # Pre-compute track embeddings for all tracks
         self.track_embeddings = {
             track['track_uri']: self.construct_track_embedding(track)
             for _, track in self.df_tracks.iterrows()
