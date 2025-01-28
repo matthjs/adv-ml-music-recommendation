@@ -3,12 +3,15 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score
 
+from adv_ml_music_recommendation.recommenders.collaborativerecommender import CollaborativeRecommender
+from adv_ml_music_recommendation.recommenders.contentbasedrecommender import ContentRecommender
 from adv_ml_music_recommendation.recommenders.hybridrecommender import HybridRecommender
+from adv_ml_music_recommendation.recommenders.popularityrecommender import PopularityRecommender
 from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 
 class RecommenderEvaluator:
-    def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame):
+    def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame, type: str = 'hybrid'):
         self.train_data = []
         self.test_data = []
 
@@ -26,8 +29,22 @@ class RecommenderEvaluator:
 
         self.df_train = pd.DataFrame(self.train_data)
         self.df_test = pd.DataFrame(self.test_data)
-        self.train_data_model = HybridRecommender(df_playlist=self.df_train, df_tracks=df_tracks)
-        self.test_data_model = HybridRecommender(df_playlist=self.df_test, df_tracks=df_tracks)
+
+        if type == 'hybrid':
+            self.train_data_model = HybridRecommender(df_playlist=self.df_train, df_tracks=df_tracks)
+            self.test_data_model = HybridRecommender(df_playlist=self.df_test, df_tracks=df_tracks)
+        elif type == 'collaborative':
+            self.train_data_model = CollaborativeRecommender(df_playlist=self.df_train, df_tracks=df_tracks)
+            self.test_data_model = CollaborativeRecommender(df_playlist=self.df_test, df_tracks=df_tracks)
+        elif type == 'content':
+            self.train_data_model = ContentRecommender(df_playlist=self.df_train, df_tracks=df_tracks)
+            self.test_data_model = ContentRecommender(df_playlist=self.df_test, df_tracks=df_tracks)
+        elif type == 'popularity':
+            self.train_data_model = PopularityRecommender(df_playlist=self.df_train, df_tracks=df_tracks)
+            self.test_data_model = PopularityRecommender(df_playlist=self.df_test, df_tracks=df_tracks)
+        else:
+            raise ValueError(
+                f"Invalid type: {type}. Must be one of 'hybrid', 'collaborative', 'content', 'popularity'.")
 
 
     def evaluate_recommender_for_playlist(self, playlist_id):
