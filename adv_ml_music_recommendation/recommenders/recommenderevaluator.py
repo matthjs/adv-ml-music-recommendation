@@ -7,7 +7,7 @@ from adv_ml_music_recommendation.recommenders.collaborativerecommender import Co
 from adv_ml_music_recommendation.recommenders.contentbasedrecommender import ContentRecommender
 from adv_ml_music_recommendation.recommenders.hybridrecommender import HybridRecommender
 from adv_ml_music_recommendation.recommenders.popularityrecommender import PopularityRecommender
-from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks
+from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks, get_tracks_by_playlist_associate
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 
 
@@ -127,21 +127,26 @@ class RecommenderEvaluator:
         """
         Evaluates the recommender system for a single playlist.
         """
+        # Get the ground truth: test track URIs for the playlist
+        test_track_uris = get_tracks_by_playlist_associate(df_test, playlist_id)
+
+        # top-K recommendations
+        k = len(test_track_uris)
+
         # Get recommendations from the train model
-        ranked_recommendations_df = model.recommend_tracks(playlist_id)
+        ranked_recommendations_df = model.recommend_tracks(playlist_id, k)
         # Extract the recommended track URIs
         recommended_track_uris = ranked_recommendations_df['track_uri'].tolist()
-
-        # Get the ground truth: test track URIs for the playlist
-        test_track_uris = df_test[df_test['playlist_id'] == playlist_id]['track_uri'].tolist()
 
         # Create binary vectors for precision and recall calculation
         y_true = [1 if uri in test_track_uris else 0 for uri in recommended_track_uris]
         y_pred = [1] * len(recommended_track_uris)  # All recommendations are predicted as relevant
 
-        # Compute precision and recall
+        # Compute precision and recall (still not entirely sold whether the metrics are valid in this case)
         precision = precision_score(y_true, y_pred, zero_division=0)
         recall = recall_score(y_true, y_pred, zero_division=0)
+
+        hits = len(set(recommended_track_uris) & set(test_track_uris))
 
         return precision, recall
 
