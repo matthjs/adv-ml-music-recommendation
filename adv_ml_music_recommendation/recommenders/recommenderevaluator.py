@@ -150,7 +150,7 @@ class RecommenderEvaluator:
         hits = len(set(recommended_track_uris) & set(test_track_uris))
         accuracy = hits / k
 
-        return precision, recall
+        return precision, recall, accuracy
 
     def _evaluate_model(self, model, df_test):
         """
@@ -158,19 +158,23 @@ class RecommenderEvaluator:
         """
         total_precision = 0
         total_recall = 0
+        total_accuracy = 0
         num_playlists = get_number_of_playlists(df_test)
 
         # Iterate over all playlists in the test_data
         for playlist_id in df_test['playlist_id'].unique():
-            precision, recall = self._evaluate_recommender_for_playlist(model, playlist_id, df_test)
+            precision, recall, accuracy = self._evaluate_recommender_for_playlist(model, playlist_id, df_test)
             total_precision += precision
             total_recall += recall
+            total_accuracy += accuracy
 
         #  Compute average precision and recall
         avg_precision = total_precision / num_playlists
         avg_recall = total_recall / num_playlists
+        avg_accuracy = total_accuracy / num_playlists
 
         return {
             'average_precision': avg_precision,
-            'average_recall': avg_recall
+            'average_recall': avg_recall,
+            'avg_accuracy': avg_accuracy
         }
