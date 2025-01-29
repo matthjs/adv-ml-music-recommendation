@@ -139,15 +139,12 @@ class RecommenderEvaluator:
         # Extract the recommended track URIs
         recommended_track_uris = ranked_recommendations_df['track_uri'].tolist()
 
-        # Create binary vectors for precision and recall calculation
-        y_true = [1 if uri in test_track_uris else 0 for uri in recommended_track_uris]
-        y_pred = [1] * len(recommended_track_uris)  # All recommendations are predicted as relevant
-
-        # Compute precision and recall (still not entirely sold whether the metrics are valid in this case)
-        precision = precision_score(y_true, y_pred, zero_division=0)
-        recall = recall_score(y_true, y_pred, zero_division=0)
-
         hits = len(set(recommended_track_uris) & set(test_track_uris))
+        # Precision: fraction of relevant tracks in the top-k recommended tracks.
+        precision = hits / len(recommended_track_uris) if len(recommended_track_uris) else 0
+        # Recall: fraction of relevant tracks from the test set that are present in the top-k recommended tracks
+        recall = hits / len(test_track_uris) if len(test_track_uris) else 0
+
         accuracy = hits / k
 
         return precision, recall, accuracy
