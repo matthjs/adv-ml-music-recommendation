@@ -7,7 +7,8 @@ from adv_ml_music_recommendation.recommenders.collaborativerecommender import Co
 from adv_ml_music_recommendation.recommenders.contentbasedrecommender import ContentRecommender
 from adv_ml_music_recommendation.recommenders.hybridrecommender import HybridRecommender
 from adv_ml_music_recommendation.recommenders.popularityrecommender import PopularityRecommender
-from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks, get_tracks_by_playlist_associate
+from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks, get_tracks_by_playlist_associate, \
+    get_number_of_playlists
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 
 
@@ -157,7 +158,7 @@ class RecommenderEvaluator:
         """
         total_precision = 0
         total_recall = 0
-        num_playlists = len(df_test)
+        num_playlists = get_number_of_playlists(df_test)
 
         # Iterate over all playlists in the test_data
         for playlist_id in df_test['playlist_id'].unique():
