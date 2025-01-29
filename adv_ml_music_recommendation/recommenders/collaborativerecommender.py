@@ -20,7 +20,10 @@ class CollaborativeRecommender(AbstractSongRecommender):
         super().__init__(df_playlist, df_tracks)
         # User-item interaction matrix R. Important the node that the sparse representation
         #         # allows us to store this insanely big (887060, 134712) matrix.
-        self.playlist_tracks_matrix = create_sparse_interaction_matrix(df_playlist, df_tracks)
+        # len(df_playlist['playlist_id'].unique())
+        # df_tracks.shape
+        # self.playlist_tracks_matrix.shape
+        self.playlist_tracks_matrix, self.playlist_id_mapping, self.track_id_mapping = create_sparse_interaction_matrix(df_playlist, df_tracks)
 
         # Construct predicted ratings matrix \hat{R}
         # Perform (partial) svd (for sparse matrices).
@@ -31,8 +34,13 @@ class CollaborativeRecommender(AbstractSongRecommender):
         # on the fly.
 
     def get_predicted_ratings_for_playlist(self, playlist_id: int, normalize: bool = True) -> np.ndarray:
+        # Convert playlist_id to the correct row index
+        if playlist_id not in self.playlist_id_mapping:
+            raise ValueError(f"Playlist {playlist_id} not found in the interaction matrix.")
+        row_idx = self.playlist_id_mapping[playlist_id]
+
         # Multiply the playlist row by the singular values
-        playlist_ratings = self.u[playlist_id, :] @ np.diag(self.s)
+        playlist_ratings = self.u[row_idx, :] @ np.diag(self.s)
 
         # Multiply the result by vt to get the predicted ratings for all tracks for that playlist
         predicted_ratings = playlist_ratings @ self.vt
@@ -50,10 +58,10 @@ class CollaborativeRecommender(AbstractSongRecommender):
         Recommends top N tracks for the given playlist based on predicted ratings.
         """
         predicted_ratings = self.get_predicted_ratings_for_playlist(playlist_id)
-
-        # Create a DataFrame of all tracks with their predicted ratings
-        recommendations = self.df_tracks.copy()
-        recommendations['predicted_rating'] = predicted_ratings
+        recommendations = pd.DataFrame({
+            'id': list(self.track_id_mapping.keys()),  # Track IDs in correct order
+            'predicted_rating': predicted_ratings
+        }).merge(self.df_tracks, on='id', how='left')  # Merge with track details
 
         # Filter out tracks already in the playlist
         playlist_tracks = get_tracks_by_playlist(self.df_playlist, self.df_tracks, playlist_id)
