@@ -147,6 +147,7 @@ class RecommenderEvaluator:
         recall = recall_score(y_true, y_pred, zero_division=0)
 
         hits = len(set(recommended_track_uris) & set(test_track_uris))
+        accuracy = hits / k
 
         return precision, recall
 
