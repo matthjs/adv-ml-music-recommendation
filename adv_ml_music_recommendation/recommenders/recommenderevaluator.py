@@ -141,9 +141,9 @@ class RecommenderEvaluator:
 
         hits = len(set(recommended_track_uris) & set(test_track_uris))
         # Precision: fraction of relevant tracks in the top-k recommended tracks.
-        precision = hits / len(recommended_track_uris) if len(recommended_track_uris) else 0
+        precision = hits / len(recommended_track_uris)
         # Recall: fraction of relevant tracks from the test set that are present in the top-k recommended tracks
-        recall = hits / len(test_track_uris) if len(test_track_uris) else 0
+        recall = hits / len(test_track_uris)
 
         accuracy = hits / k
 
