@@ -11,6 +11,7 @@ from adv_ml_music_recommendation.util.data_functions import get_interacted_track
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 
 from typing import Tuple
+from typing import Tuple
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score
@@ -22,6 +23,7 @@ from adv_ml_music_recommendation.recommenders.popularityrecommender import Popul
 from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 from adv_ml_music_recommendation.util.data_functions import get_number_of_songs_in_playlist
+from adv_ml_music_recommendation.util.data_functions import get_tracks_by_playlist_associate
 
 class RecommenderEvaluator:
     def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame, type: str = 'collaborative'):
@@ -29,41 +31,36 @@ class RecommenderEvaluator:
         self.df_test_playlist = []
         self.df_tracks = df_tracks
 
-        # Filter out playlists with fewer than 10 songs
-        filtered_playlists = [pid for pid in df_playlist['playlist_id'] if get_number_of_songs_in_playlist(df_playlist, pid) >= 10]
-
-        # Renumber the filtered playlist_ids to remove gaps
-        df_playlist = list(range(1, len(filtered_playlists) + 1))
-
         # Group by playlist_id and perform train-test split for each playlist
         for playlist_id, group in df_playlist.groupby('playlist_id'):
-            if playlist_id > 1000:
+            if playlist_id > 10000:
                 break
 
-            if playlist_id % 100 == 0:
+            if playlist_id % 1000 == 0:
                 print(playlist_id)
 
-            # Extract track_uris for the current playlist
-            track_uris = group['track_uri'].tolist()
+            if group.shape[0] > 10:
+                # Extract track_uris for the current playlist
+                track_uris = group['track_uri'].tolist()
 
-            # Perform train-test split
-            train_uris, test_uris = train_test_split(track_uris, test_size=0.2, random_state=42)
+                # Perform train-test split
+                train_uris, test_uris = train_test_split(track_uris, test_size=0.2, random_state=42)
 
-            # Append the results to the train and test lists
-            for uri in train_uris:
-                 self.df_train_playlist.append({'playlist_id': playlist_id, 'track_uri': uri})
+                # Append the results to the train and test lists
+                for uri in train_uris:
+                     self.df_train_playlist.append({'playlist_id': playlist_id, 'track_uri': uri})
 
-            for uri in test_uris:
-                 self.df_test_playlist.append({'playlist_id': playlist_id, 'track_uri': uri})
+                for uri in test_uris:
+                     self.df_test_playlist.append({'playlist_id': playlist_id, 'track_uri': uri})
 
 
         self.df_train_playlist = pd.DataFrame(self.df_train_playlist)
         self.df_test_playlist = pd.DataFrame(self.df_test_playlist)
 
-        # Filter the tracks dataframe to keep only tracks that appear in the playlists dataframe:
-        # & operator feels like questionable design
-        print(self.df_train_playlist)
-        #self.df_tracks = self.df_tracks[self.df_tracks['track_uri'].isin(self.df_train_data['track_uri']) & self.df_tracks['track_uri'].isin(self.df_test_data['track_uri'])]
+         # Renumber the filtered playlist_ids to remove gaps
+        self.df_train_playlist['playlist_id'] = list(range(1, len(self.df_train_playlist) + 1))
+        self.df_test_playlist['playlist_id'] = list(range(1, len(self.df_test_playlist) + 1))
+
         self.df_tracks = self.df_tracks[self.df_tracks['track_uri'].isin(self.df_train_playlist['track_uri'])]
 
         if type == 'hybrid':
@@ -91,7 +88,8 @@ class RecommenderEvaluator:
         recommended_track_uris = ranked_recommendations_df['track_uri'].tolist()
 
         # Get the ground truth: test track URIs for the playlist
-        test_track_uris = self.df_test_playlist[self.df_test_playlist['playlist_id'] == playlist_id]['track_uri'].iloc[0]
+        test_track_uris = get_tracks_by_playlist_associate(self.df_test_playlist, playlist_id)
+        #test_track_uris = self.df_test_playlist[self.df_test_playlist['playlist_id'] == playlist_id]['track_uri'].iloc[0]
 
         # Create binary vectors for precision and recall calculation
         y_true = [1 if uri in test_track_uris else 0 for uri in recommended_track_uris]
