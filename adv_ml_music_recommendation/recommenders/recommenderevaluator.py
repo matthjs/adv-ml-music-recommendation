@@ -1,8 +1,10 @@
 from typing import Tuple, List, Dict, Any
+from loguru import logger
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import precision_score, recall_score
-
+from joblib import Parallel, delayed
 from adv_ml_music_recommendation.recommenders.collaborativerecommender import CollaborativeRecommender
 from adv_ml_music_recommendation.recommenders.contentbasedrecommender import ContentRecommender
 from adv_ml_music_recommendation.recommenders.hybridrecommender import HybridRecommender
@@ -18,6 +20,8 @@ class RecommenderEvaluator:
         """
         Initializes the evaluator with playlists, tracks, and recommender type.
         """
+        self.cached_content_rec = None
+
         self.df_playlist = df_playlist
         self.df_tracks = df_tracks
         self.type = type
@@ -27,62 +31,105 @@ class RecommenderEvaluator:
     def evaluate(self):
         return self._evaluate_model(self.model, self.df_test)
 
+    def perform_k_fold_cv_parallel(self, hyperparameter_sets, n_splits):
+        playlist_groups = self.df_train.groupby('playlist_id')
+        with Parallel(n_jobs=-1, backend="loky") as parallel:
+            results = parallel(
+                delayed(self._process_hyperparameter_set)(hyperparams, n_splits, playlist_groups)
+                for hyperparams in hyperparameter_sets
+            )
+
+        return results
+
     def perform_k_fold_cv(
             self,
             hyperparameter_sets: List[Dict],
             n_splits: int
     ) -> List[Dict]:
         """
-        Perform K-fold cross-validation with the correct splitting logic.
-
-        :param hyperparameter_sets: List of hyperparameter dictionaries to evaluate.
-        :param n_splits: Number of folds for cross-validation.
-        :return: A list of results for each hyperparameter set with precision and recall metrics.
+        Perform K-fold cross-validation with per-playlist track splitting.
         """
         results = []
-        kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+        # Group tracks by playlist
+        playlist_groups = self.df_train.groupby('playlist_id')
 
         for hyperparams in hyperparameter_sets:
-            precision_scores = []
-            recall_scores = []
+            results.append(self._process_hyperparameter_set(hyperparams, n_splits, playlist_groups))
 
-            for train_idx, val_idx in kf.split(self.df_train):
-                # Create train and validation sets based on playlist splitting
-                df_train_split = self.df_train.iloc[train_idx]
-                df_val_split = self.df_train.iloc[val_idx]
-
-                # Adjust playlists for validation
-                train_playlists = []
-                val_playlists = []
-
-                for _, row in df_train_split.iterrows():
-                    # Split each playlist's tracks into train and test
-                    train_tracks, val_tracks = train_test_split(
-                        row['track_uri'], test_size=0.2, random_state=42
-                    )
-                    train_playlists.append({'playlist_id': row['playlist_id'], 'track_uri': train_tracks})
-                    val_playlists.append({'playlist_id': row['playlist_id'], 'track_uri': val_tracks})
-
-                # Convert splits into DataFrames
-                adjusted_train = pd.DataFrame(train_playlists)
-                adjusted_val = pd.DataFrame(val_playlists)
-
-                # Train the recommender model with adjusted training set
-                model = self._initialize_model(adjusted_train, self.df_tracks, hyperparams)
-
-                # Evaluate on validation set
-                precision, recall = self._evaluate_model(model, adjusted_val)
-                precision_scores.append(precision)
-                recall_scores.append(recall)
-
-            # Aggregate results for this hyperparameter set
-            results.append({
-                'hyperparams': hyperparams,
-                'average_precision': sum(precision_scores) / len(precision_scores),
-                'average_recall': sum(recall_scores) / len(recall_scores),
-            })
-
+        logger.info("Performing K-fold cross done.")
         return results
+
+    def _process_hyperparameter_set(self, hyperparams, n_splits, playlist_groups):
+        logger.info(f'Performing K-fold cross for {hyperparams}')
+        fold_metrics = {'precision': [], 'recall': [], 'accuracy': []}
+
+        # Create K folds at the track level within each playlist
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+
+        # Generate indices for splits across all playlists
+        fold_splits = []
+        for pl_id, pl_df in playlist_groups:
+            tracks = pl_df['track_uri'].values
+            # if len(tracks) < 2:
+            #     # Skip playlists with insufficient tracks for splitting
+            #     fold_splits.append([(tracks, np.array([]))] * n_splits)
+            #    continue
+
+            # Generate splits for this playlist's tracks
+            splits = list(kf.split(tracks))
+            fold_splits.append([
+                (tracks[train_idx], tracks[test_idx])
+                for train_idx, test_idx in splits
+            ])
+
+        # For each fold, aggregate splits across all playlists
+        for fold_idx in range(n_splits):
+            logger.info(f'Computing val metrics for fold {fold_idx}')
+            train_chunks = []
+            val_chunks = []
+
+            # Process each playlist's split for this fold
+            for pl_idx, (pl_id, pl_df) in enumerate(playlist_groups):
+                if len(fold_splits[pl_idx][fold_idx][1]) == 0:
+                    # Handle playlists with no validation tracks
+                    train_chunks.append(pl_df)
+                    continue
+
+                # Split tracks for this playlist
+                train_tracks, val_tracks = fold_splits[pl_idx][fold_idx]
+
+                # Create split DataFrames
+                train_split = pl_df[pl_df['track_uri'].isin(train_tracks)]
+                val_split = pl_df[pl_df['track_uri'].isin(val_tracks)]
+
+                train_chunks.append(train_split)
+                val_chunks.append(val_split)
+
+            # Combine splits across all playlists
+            fold_train = pd.concat(train_chunks)
+            fold_val = pd.concat(val_chunks)
+
+            if fold_val.empty:
+                continue
+
+            model = self._initialize_model(fold_train, self.df_tracks, **hyperparams)
+
+            # Evaluate on validation set
+            metrics = self._evaluate_model(model, fold_val)
+            # fold_metrics['precision'].append(metrics['average_precision'])
+            # fold_metrics['recall'].append(metrics['average_recall'])
+            fold_metrics['accuracy'].append(metrics['avg_accuracy'])
+
+        # Aggregate results across folds
+        if fold_metrics['accuracy']:
+            return {
+                'hyperparams': hyperparams,
+                # 'average_precision': np.mean(fold_metrics['precision']),
+                # 'average_recall': np.mean(fold_metrics['recall']),
+                'average_accuracy': np.mean(fold_metrics['accuracy'])
+            }
+
+        return None
 
     def _initialize_model(self, df_train: pd.DataFrame, df_tracks: pd.DataFrame, **params):
         """
@@ -93,7 +140,11 @@ class RecommenderEvaluator:
         elif self.type == 'collaborative':
             return CollaborativeRecommender(df_playlist=df_train, df_tracks=df_tracks, **params)
         elif self.type == 'content':
-            return ContentRecommender(df_playlist=df_train, df_tracks=df_tracks, **params)
+            rec = ContentRecommender(df_playlist=df_train, df_tracks=df_tracks, **params,
+                                     cached_content_recommender=self.cached_content_rec)
+            if self.cached_content_rec is None:
+                self.cached_content_rec = rec
+            return rec
         else:
             raise ValueError(
                 f"Invalid type: {self.type}. Must be one of 'hybrid', 'collaborative', or 'content'.")

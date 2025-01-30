@@ -18,6 +18,8 @@ pyyaml = "^6.0.2"
 notebook = "^7.3.2"
 mysql-connector-python = "^9.1.0"
 sqlalchemy = "^2.0.37"
+loguru = "^0.7.3"
+cupy-cuda12x = "^13.3.0"
 
 
 [build-system]

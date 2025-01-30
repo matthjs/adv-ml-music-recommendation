@@ -4,6 +4,7 @@ from scipy.sparse.linalg import svds
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 from adv_ml_music_recommendation.util.data_functions import create_sparse_interaction_matrix, \
     filter_out_playlist_tracks, get_tracks_by_playlist
+from scipy.special import softmax
 
 
 class CollaborativeRecommender(AbstractSongRecommender):
@@ -11,7 +12,7 @@ class CollaborativeRecommender(AbstractSongRecommender):
     Matrix factorization based (using SVD) collaborative filtering.
     """
 
-    def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame, k: int = 15):
+    def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame, k: int = 20):
         """
         :param df_playlist:
         :param df_tracks:
@@ -20,10 +21,8 @@ class CollaborativeRecommender(AbstractSongRecommender):
         super().__init__(df_playlist, df_tracks)
         # User-item interaction matrix R. Important the node that the sparse representation
         #         # allows us to store this insanely big (887060, 134712) matrix.
-        # len(df_playlist['playlist_id'].unique())
-        # df_tracks.shape
-        # self.playlist_tracks_matrix.shape
-        self.playlist_tracks_matrix, self.playlist_id_mapping, self.track_id_mapping = create_sparse_interaction_matrix(df_playlist, df_tracks)
+        self.playlist_tracks_matrix, self.playlist_id_mapping, self.track_id_mapping = create_sparse_interaction_matrix(
+            df_playlist, df_tracks)
 
         # Construct predicted ratings matrix \hat{R}
         # Perform (partial) svd (for sparse matrices).
@@ -46,10 +45,7 @@ class CollaborativeRecommender(AbstractSongRecommender):
         predicted_ratings = playlist_ratings @ self.vt
 
         if normalize:
-            min_rating = np.min(predicted_ratings)
-            max_rating = np.max(predicted_ratings)
-            normalized_ratings = (predicted_ratings - min_rating) / (max_rating - min_rating)
-            return normalized_ratings
+            return softmax(predicted_ratings)
 
         return playlist_ratings
 
@@ -68,7 +64,9 @@ class CollaborativeRecommender(AbstractSongRecommender):
         filtered_recommendations = filter_out_playlist_tracks(recommendations, playlist_tracks)
 
         # Sort by predicted rating and take the top K
-        top_tracks = filtered_recommendations.sort_values(by='predicted_rating', ascending=False).head(top_k)
+        if top_k < 0:
+            top_tracks = filtered_recommendations.sort_values(by='predicted_rating', ascending=False)
+        else:
+            top_tracks = filtered_recommendations.sort_values(by='predicted_rating', ascending=False).head(top_k)
 
-        # top_tracks[['track_uri', 'track_name', 'artist_name', 'predicted_rating']]
         return top_tracks
