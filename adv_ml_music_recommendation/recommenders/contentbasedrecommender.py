@@ -2,8 +2,10 @@ from typing import Optional, List
 import ast
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from gensim.models import Word2Vec
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import PCA
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
 from adv_ml_music_recommendation.util.data_functions import get_tracks_by_playlist, filter_out_playlist_tracks
 
@@ -138,3 +140,57 @@ class ContentRecommender(AbstractSongRecommender):
         recommended_tracks['predicted_rating'] = predicted_ratings
 
         return recommended_tracks
+
+    def get_closest_words(self, playlist_embedding: np.ndarray, top_n=10):
+        """
+        Finds the closest words in the Word2Vec space to the given embedding.
+
+        :param playlist_embedding: The playlist embedding vector.
+        :param top_n: Number of closest words to return.
+        :return: List of (word, similarity score) tuples.
+        """
+        word_vectors = np.array([self.embedder.wv[word] for word in self.embedder.wv.index_to_key])
+        similarities = cosine_similarity(playlist_embedding.reshape(1, -1), word_vectors)[0]
+
+        word_similarities = list(zip(self.embedder.wv.index_to_key, similarities))
+        sorted_words = sorted(word_similarities, key=lambda x: x[1], reverse=True)
+
+        return sorted_words[:top_n]
+
+    def visualize_embedding(self, playlist_embedding: np.ndarray, top_n=10):
+        """
+        Visualizes the closest words to the playlist embedding in 2D.
+
+        :param playlist_embedding: The playlist embedding vector.
+        :param top_n: Number of words to visualize.
+        """
+        closest_words = self.get_closest_words(playlist_embedding, top_n=top_n)
+        words, similarities = zip(*closest_words)
+
+        # Get word vectors for closest words
+        word_vectors = np.array([self.embedder.wv[word] for word in words] + [playlist_embedding])
+
+        dimensionality_reducer = PCA(n_components=2)
+
+        dim_reduced_vectors = dimensionality_reducer.fit_transform(word_vectors)
+
+        # Plot
+        plt.figure(figsize=(8, 6))
+        plt.scatter(dim_reduced_vectors[:, 0], dim_reduced_vectors[:, 1], c='blue', label="Closest Words")
+
+        # Highlight playlist embedding
+        plt.scatter(dim_reduced_vectors[-1, 0], dim_reduced_vectors[-1, 1], c='red', marker='x', s=150, label="Playlist")
+
+        # Annotate points
+        for i, word in enumerate(words):
+            plt.text(dim_reduced_vectors[i, 0], dim_reduced_vectors[i, 1], word, fontsize=12, ha='right', va='bottom')
+
+        plt.text(dim_reduced_vectors[-1, 0], dim_reduced_vectors[-1, 1], "PLAYLIST", fontsize=14, fontweight='bold',
+                 color='red', ha='right', va='bottom')
+
+        plt.xlabel("Dimension 1")
+        plt.ylabel("Dimension 2")
+        plt.title(f"Closest Words to Playlist Embedding")
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.show()
