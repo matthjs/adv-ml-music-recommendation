@@ -140,38 +140,24 @@ class RecommenderEvaluator:
         recommended_track_uris = ranked_recommendations_df['track_uri'].tolist()
 
         hits = len(set(recommended_track_uris) & set(test_track_uris))
-        # Precision: fraction of relevant tracks in the top-k recommended tracks.
-        precision = hits / len(recommended_track_uris)
-        # Recall: fraction of relevant tracks from the test set that are present in the top-k recommended tracks
-        recall = hits / len(test_track_uris)
-
         accuracy = hits / k
 
-        return precision, recall, accuracy
+        return accuracy
 
     def _evaluate_model(self, model, df_test):
         """
         Evaluates the recommender system on a single train-test split.
         """
-        total_precision = 0
-        total_recall = 0
         total_accuracy = 0
         num_playlists = get_number_of_playlists(df_test)
 
         # Iterate over all playlists in the test_data
         for playlist_id in df_test['playlist_id'].unique():
-            precision, recall, accuracy = self._evaluate_recommender_for_playlist(model, playlist_id, df_test)
-            total_precision += precision
-            total_recall += recall
+            accuracy = self._evaluate_recommender_for_playlist(model, playlist_id, df_test)
             total_accuracy += accuracy
 
-        #  Compute average precision and recall
-        avg_precision = total_precision / num_playlists
-        avg_recall = total_recall / num_playlists
         avg_accuracy = total_accuracy / num_playlists
 
         return {
-            'average_precision': avg_precision,
-            'average_recall': avg_recall,
             'avg_accuracy': avg_accuracy
         }
