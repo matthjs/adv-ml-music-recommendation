@@ -25,9 +25,10 @@ def main() -> None:
 def evaluate() -> None:
     df_playlist_pure = pd.read_csv("../data/track_playlist_association.csv")
     df_playlist = filter_playlist_df_min_tracks(df_playlist_pure, min_tracks=100)
+    print(len(df_playlist['playlist_id'].unique()))
     df_tracks = pd.read_csv("../data/matched_songs.csv")
 
-    evaluator = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks, type='hybrid')
+    evaluator = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks, type='content')
     print(evaluator.evaluate())
 
 
@@ -35,6 +36,11 @@ def tune() -> None:
     df_playlist_pure = pd.read_csv("../data/track_playlist_association.csv")
     df_playlist = filter_playlist_df_min_tracks(df_playlist_pure, min_tracks=100)
     df_tracks = pd.read_csv("../data/matched_songs.csv")
+
+    # File paths for saving results
+    collaborative_results_file = "../results/collaborative_results.csv"
+    word2vec_results_file = "../results/word2vec_results.csv"
+    hybrid_results_file = "../results/hybrid_results.csv"
 
     evaluator = RecommenderEvaluator(
         df_playlist=df_playlist,
@@ -52,7 +58,9 @@ def tune() -> None:
         n_splits=2,
     )
 
+    # Save collaborative filtering results
     print(k_results)
+    pd.DataFrame(k_results).to_csv(collaborative_results_file, index=False)
 
     best_k_result = max(k_results, key=lambda r: r['average_accuracy'])
     best_k = best_k_result['hyperparams']['k']
@@ -69,7 +77,7 @@ def tune() -> None:
 
     word2vec_params = {
         'D': [50, 100, 200],
-        'w': [5, 10],
+        'w': [5, 10, 15],
         'e': [10, 20, 30],
         'sg': [0, 1]
     }
@@ -84,7 +92,9 @@ def tune() -> None:
         n_splits=2
     )
 
+    # Save content-based filtering results
     print(word2vec_results)
+    pd.DataFrame(word2vec_results).to_csv(word2vec_results_file, index=False)
 
     best_word2vec_result = max(word2vec_results, key=lambda r: r['average_accuracy'])
     best_word2vec_params = best_word2vec_result['hyperparams']
@@ -110,7 +120,9 @@ def tune() -> None:
         n_splits=2
     )
 
+    # Save hybrid model results
     print(alpha_results)
+    pd.DataFrame(alpha_results).to_csv(hybrid_results_file, index=False)
 
     best_alpha_result = max(alpha_results, key=lambda r: r['average_accuracy'])
     best_hyperparameters = best_alpha_result['hyperparams']
@@ -122,4 +134,4 @@ def tune() -> None:
 
 
 if __name__ == "__main__":
-    evaluate()
+    tune()
