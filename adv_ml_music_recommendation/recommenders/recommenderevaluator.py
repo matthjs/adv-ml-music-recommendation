@@ -32,7 +32,7 @@ class RecommenderEvaluator:
 
     def perform_k_fold_cv_parallel(self, hyperparameter_sets, n_splits):
         playlist_groups = self.df_train.groupby('playlist_id')
-        with Parallel(n_jobs=-1, backend="loky") as parallel:
+        with Parallel(n_jobs=8, backend="loky") as parallel:
             results = parallel(
                 delayed(self._process_hyperparameter_set)(hyperparams, n_splits, playlist_groups)
                 for hyperparams in hyperparameter_sets
@@ -141,8 +141,6 @@ class RecommenderEvaluator:
         elif self.type == 'content':
             rec = ContentRecommender(df_playlist=df_train, df_tracks=df_tracks, **params,
                                      cached_content_recommender=self.cached_content_rec)
-            if self.cached_content_rec is None:
-                self.cached_content_rec = rec
             return rec
         else:
             raise ValueError(

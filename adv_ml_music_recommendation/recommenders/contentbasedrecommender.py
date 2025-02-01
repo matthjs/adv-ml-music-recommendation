@@ -15,9 +15,9 @@ class ContentRecommender(AbstractSongRecommender):
     def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame,
                  attribute_list: Optional[List[str]] = None,
                  vector_size: int = 100,
-                 window: int = 5,
-                 epochs: int = 10,
-                 sg: int = 0,
+                 window: int = 15,
+                 epochs: int = 20,
+                 sg: int = 1,
                  cached_content_recommender=None):
         """
         :param df_playlist: DataFrame containing 'track_uri' and 'playlist_id'.
@@ -31,8 +31,13 @@ class ContentRecommender(AbstractSongRecommender):
 
         if attribute_list is None:
             # TODO: Update this to include more attributes!
-            attribute_list = ['name', 'artists', 'danceability', 'energy', 'loudness',
-                              'tempo', 'release_date', 'acousticness', 'speechiness']
+            attribute_list = ['name', 'artists', 'danceability', 'energy',
+                              'tempo', 'release_date', 'acousticness', 'speechiness',
+                              'instrumentalness',
+                              'liveness',
+                              # 'loudness',
+                              # 'valence'
+                              ]
         self.attribute_list = attribute_list
 
         if cached_content_recommender is None:

@@ -8,9 +8,9 @@ from adv_ml_music_recommendation.util.data_functions import get_tracks_by_playli
 
 class HybridRecommender(AbstractSongRecommender):
     def __init__(self, df_playlist: pd.DataFrame, df_tracks: pd.DataFrame,
-                 k: int = 15, attribute_list: Optional[List[str]] = None,
-                 content_weight: float = 0.3,
-                 vector_size: int = 100, window: int = 15, epochs: int = 20, sg: int = 1):
+                 k: int = 20, attribute_list: Optional[List[str]] = None,
+                 content_weight: float = 0.2,
+                 vector_size: int = 50, window: int = 5, epochs: int = 10, sg: int = 0):
         """
         :param df_playlist: DataFrame containing playlist information.
         :param df_tracks: DataFrame containing detailed track information.
