@@ -16,7 +16,7 @@ class ContentRecommender(AbstractSongRecommender):
                  attribute_list: Optional[List[str]] = None,
                  vector_size: int = 100,
                  window: int = 15,
-                 epochs: int = 20,
+                 epochs: int = 30,
                  sg: int = 1,
                  cached_content_recommender=None):
         """

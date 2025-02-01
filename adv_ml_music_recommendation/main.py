@@ -28,7 +28,9 @@ def evaluate() -> None:
     print(len(df_playlist['playlist_id'].unique()))
     df_tracks = pd.read_csv("../data/matched_songs.csv")
 
-    evaluator = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks, type='content')
+    evaluator = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks,)
+    # Content: {'avg_accuracy': 0.1662330804508473}
+    # Hybrid: {'avg_accuracy': 0.41132037903672286}
     print(evaluator.evaluate())
 
 
@@ -134,4 +136,4 @@ def tune() -> None:
 
 
 if __name__ == "__main__":
-    tune()
+    evaluate()
