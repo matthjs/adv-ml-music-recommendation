@@ -8,7 +8,6 @@ from joblib import Parallel, delayed
 from adv_ml_music_recommendation.recommenders.collaborativerecommender import CollaborativeRecommender
 from adv_ml_music_recommendation.recommenders.contentbasedrecommender import ContentRecommender
 from adv_ml_music_recommendation.recommenders.hybridrecommender import HybridRecommender
-from adv_ml_music_recommendation.recommenders.popularityrecommender import PopularityRecommender
 from adv_ml_music_recommendation.util.data_functions import get_interacted_tracks, get_tracks_by_playlist_associate, \
     get_number_of_playlists
 from adv_ml_music_recommendation.recommenders.abstractrecommender import AbstractSongRecommender
