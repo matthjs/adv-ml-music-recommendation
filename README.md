@@ -1,13 +1,16 @@
 <br />
 <p align="center">
-  <h1 align="center">Music Recommendation System</h1>
+  <h1 align="center">Music Recommendation System for Spotify
+Playlists</h1>
 
   <p align="center">
   </p>
 </p>
 
 ## About The Project
+A variety of machine learning paradigms underpin recommender systems. In this project we focus on a hybrid recommendation system that uses model-based collaborative filtering, involving the singular value decomposition (SVD) and content-based filtering based on word2vec word embeddings. 
 
+The recommendation task at hand is playlist continuation, whereby for each playlist we aim to suggest the top k most relevant additional tracks.
 ## Getting started
 
 ### Prerequisites
@@ -31,11 +34,6 @@ The virtual environment can be accessed from the shell using:
 poetry shell
 ```
 IDEs like Pycharm will be able to detect the interpreter of this virtual environment.
-
-## Usage
-
-
-# Acknowledgements
 
 # License
 This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](./LICENSE) file for details.

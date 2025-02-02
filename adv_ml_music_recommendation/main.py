@@ -1,42 +1,51 @@
 import pandas as pd
 from adv_ml_music_recommendation.recommenders.hybridrecommender import HybridRecommender
 from adv_ml_music_recommendation.recommenders.recommenderevaluator import RecommenderEvaluator
-from adv_ml_music_recommendation.util.data_functions import filter_playlist_df_min_tracks
+from adv_ml_music_recommendation.util.data_functions import filter_playlist_df_min_tracks, get_tracks_by_playlist
 from itertools import product
 
 
 def main() -> None:
+    # Shows a recommendation example
     df_playlist = pd.read_csv("../data/track_playlist_association.csv")
-    df_playlist = filter_playlist_df_min_tracks(df_playlist, min_tracks=69)
+    df_playlist = filter_playlist_df_min_tracks(df_playlist, min_tracks=10)
     df_tracks = pd.read_csv("../data/matched_songs.csv")
 
-    recommender = HybridRecommender(df_playlist=df_playlist, df_tracks=df_tracks)
-
     # Get the top 10 recommended tracks for a specific playlist
-    playlist_id = 33660  # Replace with the playlist_id for which you want recommendations
-    top_k = 10  # Number of tracks to recommend
+    playlist_id = 3  # Replace with the playlist_id for which you want recommendations
+    top_k = 5  # Number of tracks to recommend
+
+    playlist_tracks = get_tracks_by_playlist(df_playlist, df_tracks, playlist_id)
+    print(playlist_tracks)
+
+    recommender = HybridRecommender(df_playlist=df_playlist, df_tracks=df_tracks)
 
     recommended_tracks = recommender.recommend_tracks(playlist_id=playlist_id, top_k=top_k)
 
     print(recommended_tracks)
-    print(recommended_tracks[['track_uri', 'track_name', 'artist_name', 'predicted_rating']])
 
 
 def evaluate() -> None:
     df_playlist_pure = pd.read_csv("../data/track_playlist_association.csv")
-    df_playlist = filter_playlist_df_min_tracks(df_playlist_pure, min_tracks=100)
+    df_playlist = filter_playlist_df_min_tracks(df_playlist_pure, min_tracks=50)
     print(len(df_playlist['playlist_id'].unique()))
     df_tracks = pd.read_csv("../data/matched_songs.csv")
 
-    evaluator = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks,)
-    # Content: {'avg_accuracy': 0.1662330804508473}
-    # Hybrid: {'avg_accuracy': 0.41132037903672286}
+    evaluator = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks)
+
     print(evaluator.evaluate())
+
+    evaluator2 = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks, type='collaborative')
+    evaluator3 = RecommenderEvaluator(df_playlist=df_playlist, df_tracks=df_tracks, type='content')
+
+    print(evaluator2.evaluate())
+    print(evaluator3.evaluate())
 
 
 def tune() -> None:
+    # Hyperparameter tuning experiment
     df_playlist_pure = pd.read_csv("../data/track_playlist_association.csv")
-    df_playlist = filter_playlist_df_min_tracks(df_playlist_pure, min_tracks=100)
+    df_playlist = filter_playlist_df_min_tracks(df_playlist_pure, min_tracks=50)
     df_tracks = pd.read_csv("../data/matched_songs.csv")
 
     # File paths for saving results
@@ -113,7 +122,7 @@ def tune() -> None:
 
     alpha_values = [0.2, 0.5, 0.8]
     alpha_hyperparameter_sets = [
-        {**best_word2vec_params, 'content_weight': alpha}
+        {'k': best_k, **best_word2vec_params, 'content_weight': alpha}
         for alpha in alpha_values
     ]
 
@@ -136,4 +145,4 @@ def tune() -> None:
 
 
 if __name__ == "__main__":
-    evaluate()
+    main()

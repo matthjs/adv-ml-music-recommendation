@@ -69,10 +69,6 @@ class RecommenderEvaluator:
         fold_splits = []
         for pl_id, pl_df in playlist_groups:
             tracks = pl_df['track_uri'].values
-            # if len(tracks) < 2:
-            #     # Skip playlists with insufficient tracks for splitting
-            #     fold_splits.append([(tracks, np.array([]))] * n_splits)
-            #    continue
 
             # Generate splits for this playlist's tracks
             splits = list(kf.split(tracks))
@@ -115,16 +111,12 @@ class RecommenderEvaluator:
 
             # Evaluate on validation set
             metrics = self._evaluate_model(model, fold_val)
-            # fold_metrics['precision'].append(metrics['average_precision'])
-            # fold_metrics['recall'].append(metrics['average_recall'])
             fold_metrics['accuracy'].append(metrics['avg_accuracy'])
 
         # Aggregate results across folds
         if fold_metrics['accuracy']:
             return {
                 'hyperparams': hyperparams,
-                # 'average_precision': np.mean(fold_metrics['precision']),
-                # 'average_recall': np.mean(fold_metrics['recall']),
                 'average_accuracy': np.mean(fold_metrics['accuracy'])
             }
 
@@ -145,13 +137,6 @@ class RecommenderEvaluator:
         else:
             raise ValueError(
                 f"Invalid type: {self.type}. Must be one of 'hybrid', 'collaborative', or 'content'.")
-
-    # def _split_playlist(self, playlist_tracks: List[str], test_ratio: float = 0.2):
-    #     """
-    #    Splits the tracks in a playlist into train and test sets.
-    #    """
-    #    split_index = int(len(playlist_tracks) * (1 - test_ratio))
-    #    return playlist_tracks[:split_index], playlist_tracks[split_index:]
 
     def _prepare_split_data(self, test_ratio: float = 0.2):
         """

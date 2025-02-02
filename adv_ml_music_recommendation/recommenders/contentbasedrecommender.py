@@ -44,7 +44,9 @@ class ContentRecommender(AbstractSongRecommender):
             # Generate corpus using consistent tokenization
             df_corpus = self.df_tracks.apply(self.get_track_tokens, axis=1)
             corpus = [' '.join(tokens).split() for tokens in df_corpus]  # Split into final tokens
-            self.embedder = Word2Vec(sentences=corpus, vector_size=vector_size, window=window, epochs=epochs, sg=sg)
+            self.embedder = Word2Vec(sentences=corpus, vector_size=vector_size, window=window, epochs=epochs, sg=sg,
+                                     compute_loss=True)
+            print("Loss", self.embedder.get_latest_training_loss())
             # Precompute track embeddings using correct tokenization
 
             # Create index mapping
